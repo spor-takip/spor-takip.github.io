@@ -474,6 +474,8 @@
             const timeRaw = document.getElementById('activeTime').value;
             const homeId = document.getElementById('activeHome').value;
             const awayId = document.getElementById('activeAway').value;
+            // YENİ: Maç türünü (Grup veya Eleme) al
+            const matchType = document.getElementById('activeMatchType') ? document.getElementById('activeMatchType').value : 'group';
 
             if (!rawDate || !timeRaw || !homeId || !awayId) { alert("Lütfen tarih, saat, ev sahibi ve deplasman takımlarını eksiksiz doldurun!"); return; }
             if (homeId === awayId) { alert("Ev sahibi ve deplasman takımı aynı takım olamaz!"); return; }
@@ -482,7 +484,17 @@
             const dateStr = formatDateToLeagueString(new Date(rawDate));
             let roundObj = league.fixtures.find(r => r.date === dateStr);
             if (!roundObj) { roundObj = { round: league.fixtures.length + 1, date: dateStr, matches: [] }; league.fixtures.push(roundObj); }
-            roundObj.matches.push({ id: Date.now().toString(), home: {id: homeId}, away: {id: awayId}, homeScore: '', awayScore: '', time: time, group: getTeam(homeId, state.activeSport).group, cards: [] });
+            roundObj.matches.push({ 
+                id: Date.now().toString(), 
+                home: {id: homeId}, 
+                away: {id: awayId}, 
+                homeScore: '', 
+                awayScore: '', 
+                time: time, 
+                group: getTeam(homeId, state.activeSport).group, 
+                cards: [],
+                isKnockout: matchType === 'knockout' // YENİ: Maçın eleme maçı olup olmadığını kaydet
+            });
             sortFixturesByDate(league.fixtures); state.showMatchForm = false; saveState(); render();
         };
 
@@ -579,6 +591,9 @@
 
             currentLeague.fixtures.forEach(round => {
                 round.matches.forEach(match => {
+                    // DÜZELTME: Eğer maç bir eleme/final maçıysa, puan tablosunu (ve grup kırmızı kartlarını) atla
+                    if (match.isKnockout) return;
+
                     if(match.cards) { match.cards.forEach(card => { if(stats[card.teamId]) stats[card.teamId].redCards++; }); }
 
                     if (match.homeScore !== '' && match.awayScore !== '') {
@@ -880,6 +895,12 @@
 
                                 ${state.showMatchForm && state.isLoggedIn ? `
                                     <div class="bg-green-50 p-4 border-b fade-in print:hidden">
+                                        <div class="mb-2">
+                                            <select id="activeMatchType" class="w-full border border-purple-200 rounded p-1.5 text-xs bg-purple-50 text-purple-700 font-bold outline-none focus:ring-1 focus:ring-purple-400">
+                                                <option value="group">Puanlı Grup Maçı</option>
+                                                <option value="knockout">Eleme / Final Maçı (Puansız)</option>
+                                            </select>
+                                        </div>
                                         <div class="grid grid-cols-2 gap-2 mb-2">
                                             <input type="date" id="activeDate" class="border rounded p-1.5 text-xs bg-white outline-none">
                                             <input type="time" id="activeTime" value="14:00" class="border rounded p-1.5 text-xs bg-white">
@@ -906,7 +927,9 @@
                                                         ${state.isLoggedIn ? `<button onclick="window.removeFixtureMatch('${match.id}')" class="absolute top-1 right-1 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all p-1.5 rounded-md shadow-sm border border-red-100 print:hidden" title="Maçı Fikstürden Sil">${icons.trash}</button>` : ''}
                                                         
                                                         <div class="flex justify-between items-center mb-1">
-                                                            <span class="text-[9px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-500 font-bold uppercase tracking-tight">${match.group} GRUBU</span>
+                                                            <span class="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tight ${match.isKnockout ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-500'}">
+                                                                ${match.isKnockout ? 'ELEME MAÇI' : match.group + ' GRUBU'}
+                                                            </span>
                                                             <span class="text-[10px] text-gray-400 flex items-center gap-1 font-medium">${icons.clock} ${match.time || '--:--'}</span>
                                                         </div>
                                                         <div class="flex justify-between items-center gap-1 ${state.isLoggedIn ? 'pr-6' : ''}">
