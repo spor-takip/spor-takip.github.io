@@ -357,7 +357,7 @@
             state.isPanelOpen = false; 
             render(); 
         };
-        
+
         window.login = async function() {
             const user = document.getElementById('loginUser').value;
             const pass = document.getElementById('loginPass').value;
@@ -381,7 +381,7 @@
                 alert('Hatalı kullanıcı adı veya şifre!');
             }
         };
-        
+
         window.logout = function() { state.isLoggedIn = false; state.currentView = 'home'; render(); };
         
         window.setActiveRuleTab = function(tabId) { state.activeRuleTab = tabId; render(); };
@@ -762,7 +762,7 @@
             `;
         }
 
-        function renderKnockout() {
+        function renderKnockout(isEmbedded = false) {
             const league = state.leagues[state.activeSport];
             const kn = league.knockouts || DEFAULT_KNOCKOUT;
             const teams = league.teams;
@@ -807,7 +807,7 @@
             };
 
             return `
-                <div class="bg-gray-100 p-6 rounded-xl border border-gray-200" id="pdf-content">
+                <div class="bg-gray-100 p-6 rounded-xl border border-gray-200" ${!isEmbedded ? 'id="pdf-content"' : ''}>
                     <h2 class="text-xl font-bold text-center mb-8 uppercase tracking-widest text-gray-800">Eleme Turları (Şampiyonluk Ağacı)</h2>
                     <div class="flex flex-col md:flex-row justify-between gap-8 md:gap-4 relative">
                         <!-- Çeyrek Final -->
@@ -858,8 +858,16 @@
                             </div>
                             ` : ''}
 
-                            <div id="pdf-content" class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-2">
-                                ${['A','B','C','D'].map(g => getGroupTableHTML(g)).join('')}
+                            <!-- Gruplar ve Eleme Aşaması tek PDF bloğuna alındı -->
+                            <div id="pdf-content" class="bg-white p-2 rounded-xl">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    ${['A','B','C','D'].map(g => getGroupTableHTML(g)).join('')}
+                                </div>
+                                
+                                <!-- ELEME AŞAMASI (Çeyrek Final'den Başlar) -->
+                                <div class="mt-8 pt-6 border-t border-gray-100">
+                                    ${renderKnockout(true)}
+                                </div>
                             </div>
                         </div>
 
@@ -904,7 +912,6 @@
                                                         <div class="flex justify-between items-center gap-1 ${state.isLoggedIn ? 'pr-6' : ''}">
                                                             <span class="text-xs font-semibold w-[40%] text-right truncate" title="Yönetici: ${h.manager || '-'} | Antrenör: ${h.coach || '-'}">${h.name}</span>
                                                             <div class="flex items-center gap-1">
-                                                                <!-- DÜZELTME 3: oninput yerine onchange kullanıldı. Böylece skor yazarken imlecin kaybolması engellendi. -->
                                                                 <input type="number" ${!state.isLoggedIn ? 'readonly' : ''} value="${match.homeScore}" onchange="window.updateScore(${rIndex}, '${match.id}', 'homeScore', this.value)" class="w-8 h-7 text-center border rounded text-xs font-bold outline-none focus:ring-1 focus:ring-blue-400 shadow-sm ${!state.isLoggedIn ? 'bg-gray-50 border-transparent cursor-default' : 'bg-white'}">
                                                                 <span class="text-gray-300 font-bold">:</span>
                                                                 <input type="number" ${!state.isLoggedIn ? 'readonly' : ''} value="${match.awayScore}" onchange="window.updateScore(${rIndex}, '${match.id}', 'awayScore', this.value)" class="w-8 h-7 text-center border rounded text-xs font-bold outline-none focus:ring-1 focus:ring-blue-400 shadow-sm ${!state.isLoggedIn ? 'bg-gray-50 border-transparent cursor-default' : 'bg-white'}">
@@ -1155,17 +1162,6 @@
 
                         <hr class="border-gray-100">
 
-                        <!-- Turnuva Yönetimi -->
-                        <div>
-                            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 pl-2">Turnuva</h3>
-                            <button onclick="window.handleNav('knockout')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition text-left ${state.currentView === 'knockout' ? currentSport.color + ' text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}">
-                                <div class="opacity-80">${icons.bracket}</div>
-                                Eleme Aşaması (Final)
-                            </button>
-                        </div>
-
-                        <hr class="border-gray-100">
-
                         <!-- Ayarlar -->
                         <div>
                             <button onclick="window.handleNav('settings')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition text-left ${state.currentView === 'settings' ? currentSport.color + ' text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}">
@@ -1223,8 +1219,6 @@
                 html += renderHome();
             } else if (state.currentView === 'settings') {
                 html += renderSettings();
-            } else if (state.currentView === 'knockout') {
-                html += renderKnockout();
             } else {
                 const activeLeague = state.leagues[state.activeSport];
                 if (!activeLeague.isStarted && activeLeague.fixtures.length === 0) {
